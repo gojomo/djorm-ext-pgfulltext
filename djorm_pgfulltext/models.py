@@ -3,6 +3,7 @@
 from itertools import repeat
 from django.db import models, connections
 from django.db.models.query import QuerySet
+import six
 
 # Compatibility import and fixes section.
 
@@ -52,9 +53,10 @@ class SearchManagerMixIn(object):
     A mixin to create a Manager with a 'search' method that may do a full text search
     on the model.
 
-    The manager is set up with a list of one or more model's fields that will be searched.
+    The manager is set up with 'fields', a list of one or more model's fields that will be searched.
     It can be a list of field names, or a list of tuples (field_name, weight). It can also
     be None, in that case every CharField and TextField in the model will be searched.
+    Finally, it can be raw postgresql text to specify the constructed ts_vector.
 
     You can also give a 'search_field', a VectorField into where the values of the searched
     fields are copied and normalized. If you give it, the searches will be made on this
@@ -197,6 +199,8 @@ class SearchManagerMixIn(object):
 
     def _get_search_vector(self, config, using, fields=None):
         if fields is None:
+            if isinstance(self._fields, six.string_types):
+                return self._fields  # interpret as raw postgresql 
             vector_fields = self._parse_fields(self._fields)
         else:
             vector_fields = self._parse_fields(fields)
